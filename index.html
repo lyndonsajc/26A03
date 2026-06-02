@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>26A03 Class Hub</title>
+<style>
+:root{
+  --bg:#f6f7fb;
+  --card:#ffffff;
+  --ink:#1f2937;
+  --muted:#6b7280;
+  --line:#e5e7eb;
+  --brand:#2563eb;
+  --birthday:#fef3c7;
+  --homework:#dcfce7;
+  --event:#fce7f3;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:linear-gradient(135deg,#2563eb,#7c3aed);color:white;padding:24px 16px;text-align:center}
+header h1{margin:0;font-size:28px}
+header p{margin:8px 0 0;opacity:.9}
+nav{position:sticky;top:0;z-index:10;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;background:white;border-bottom:1px solid var(--line);padding:10px}
+nav button{border:0;background:#eef2ff;padding:10px 14px;border-radius:999px;cursor:pointer;font-weight:700}
+nav button.active{background:var(--brand);color:white}
+main{max-width:1100px;margin:auto;padding:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:18px;box-shadow:0 8px 20px rgba(0,0,0,.04)}
+h2{margin-top:0}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+input,select,textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:12px;font-size:15px;background:white}
+textarea{min-height:80px;margin-top:10px}
+.primary{background:var(--brand);color:white;border:0;border-radius:12px;padding:11px 14px;cursor:pointer;font-weight:700;margin-top:10px}
+.danger{background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:10px;padding:7px 9px;cursor:pointer}
+.tabs{display:none}
+.tabs.active{display:block}
+.calendar-top{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.calendar-controls{display:flex;gap:8px;flex-wrap:wrap}
+.calendar-controls button{border:1px solid var(--line);background:white;padding:8px 12px;border-radius:999px;cursor:pointer}
+.calendar-controls button.active{background:var(--brand);color:white}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.grid.weekly .day{min-height:520px}
+.grid.fortnightly .day{min-height:250px}
+.grid.monthly .day{min-height:112px}
+.day-name{text-align:center;font-weight:700;color:var(--muted);padding:8px}
+.day{min-height:112px;background:#fafafa;border:1px solid var(--line);border-radius:14px;padding:8px;overflow:hidden}
+.day.today{border:2px solid var(--brand)}
+.day.muted{opacity:.35}
+.date-num{font-weight:700;margin-bottom:5px}
+.pill{display:block;font-size:12px;padding:5px 6px;border-radius:8px;margin:4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill.birthday{background:var(--birthday)}
+.pill.homework{background:var(--homework)}
+.pill.event{background:var(--event)}
+.list-item{border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0;background:#fff}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700;background:#eef2ff;color:#3730a3}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:10px}
+.gallery img{width:100%;height:110px;object-fit:cover;border-radius:12px;border:1px solid var(--line)}
+.note{color:var(--muted);font-size:14px}
+@media(max-width:700px){
+  header h1{font-size:22px}
+  .grid{gap:5px}
+  .day{min-height:90px;padding:6px}
+  .grid.weekly .day{min-height:360px}
+  .grid.fortnightly .day{min-height:175px}
+  .pill{font-size:11px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>26A03 Class Hub</h1>
+  <p>Calendar • Homework • Class Events</p>
+</header>
+
+<nav>
+  <button class="active" onclick="showTab('calendar', this)">📅 Calendar</button>
+  <button onclick="showTab('homework', this)">📝 Homework</button>
+  <button onclick="showTab('events', this)">📸 Class Events</button>
+</nav>
+
+<main>
+<section id="calendar" class="tabs active">
+  <div class="card">
+    <div class="calendar-top">
+      <h2 id="monthTitle">Calendar</h2>
+      <div class="calendar-controls">
+        <button onclick="moveDate(-1)">← Previous</button>
+        <button onclick="goToday()">Today</button>
+        <button onclick="moveDate(1)">Next →</button>
+      </div>
+    </div>
+    <div class="calendar-controls" style="margin-bottom:14px">
+      <button id="monthlyBtn" class="active" onclick="setView('monthly')">Monthly</button>
+      <button id="fortnightlyBtn" onclick="setView('fortnightly')">Fortnightly</button>
+      <button id="weeklyBtn" onclick="setView('weekly')">Weekly</button>
+    </div>
+    <div class="grid" id="calendarGrid"></div>
+  </div>
+
+  <div class="card">
+    <h2>Upcoming</h2>
+    <div id="upcomingList"></div>
+  </div>
+</section>
+
+<section id="homework" class="tabs">
+  <div class="card">
+    <h2>Add Homework / Test / Class Reminder</h2>
+    <div class="row">
+      <input id="hwTitle" placeholder="Title e.g. Econs Essay Outline" />
+      <input id="hwDate" type="date" />
+      <select id="hwType">
+        <option>Homework</option>
+        <option>Test</option>
+        <option>Reminder</option>
+        <option>Class Event</option>
+      </select>
+    </div>
+    <textarea id="hwDetails" placeholder="Details / instructions"></textarea>
+    <button class="primary" onclick="addHomework()">Add to Calendar</button>
+  </div>
+
+  <div class="card">
+    <h2>Homework List</h2>
+    <div id="homeworkList"></div>
+  </div>
+</section>
+
+<section id="events" class="tabs">
+  <div class="card">
+    <h2>📸 Class Events</h2>
+    <p class="note">Students can add class event memories and upload photos here. Photos are saved on this device/browser only.</p>
+    <div class="row">
+      <input id="eventTitle" placeholder="Event name e.g. Class BBQ" />
+      <input id="eventDate" type="date" />
+    </div>
+    <textarea id="eventDesc" placeholder="Description"></textarea>
+    <input id="eventPhotos" type="file" accept="image/*" multiple />
+    <button class="primary" onclick="addClassEvent()">Save Class Event</button>
+  </div>
+
+  <div class="card">
+    <h2>Photo Gallery</h2>
+    <input id="eventSearch" placeholder="Search event name..." oninput="renderClassEvents()" />
+    <div id="classEventList"></div>
+  </div>
+</section>
+</main>
+
+<script>
+const birthdays = [
+  ["Annthea","06/12/2009"],["Brandon","29/05/2009"],["Chanelle","03/03/2009"],
+  ["Chloe","16/03/2009"],["Clarissa","30/09/2009"],["Wen Jie","06/10/2009"],
+  ["Kai","28/08/2008"],["Lucien","28/10/2009"],["Ernest","30/07/2009"],
+  ["Jessandra","04/06/2009"],["Lily","08/10/2008"],["Elva","07/03/2009"],
+  ["Verlynn","04/08/2009"],["Zhi Qi","26/04/2009"],["Jordan","06/02/2009"],
+  ["Meredith","11/12/2009"],["Miller","28/02/2009"],["Nicole","26/02/2009"],
+  ["Javien","11/11/2009"],["Rayirth","17/02/2009"],["Benjamin","01/03/2009"],
+  ["Xuan You","26/02/2009"],["Emma","07/01/2009"],["Jensen","01/01/2009"],
+  ["Natalie","01/06/2009"],["Tess","12/02/2009"]
+];
+
+let homework = JSON.parse(localStorage.getItem("homeworkItems26A03") || "[]");
+let classEvents = JSON.parse(localStorage.getItem("classEvents26A03") || "[]");
+let currentDate = new Date();
+let viewMode = "monthly";
+
+function showTab(id, btn){
+  document.querySelectorAll(".tabs").forEach(t=>t.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+function parseDMY(dmy){
+  const [d,m,y] = dmy.split("/").map(Number);
+  return {d,m,y};
+}
+function isoDate(date){
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,"0");
+  const d = String(date.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
+function birthdayIsoThisYear(dmy, year){
+  const x = parseDMY(dmy);
+  return `${year}-${String(x.m).padStart(2,"0")}-${String(x.d).padStart(2,"0")}`;
+}
+function formatDate(iso){
+  if(!iso) return "";
+  const d = new Date(iso+"T00:00:00");
+  return d.toLocaleDateString("en-SG",{day:"numeric",month:"short",year:"numeric"});
+}
+function startOfWeek(date){
+  const d = new Date(date);
+  const day = d.getDay();
+  d.setDate(d.getDate() - day);
+  d.setHours(0,0,0,0);
+  return d;
+}
+function setView(mode){
+  viewMode = mode;
+  document.querySelectorAll(".calendar-controls button").forEach(b=>b.classList.remove("active"));
+  document.getElementById(mode+"Btn").classList.add("active");
+  renderCalendar();
+}
+function moveDate(step){
+  if(viewMode==="monthly") currentDate.setMonth(currentDate.getMonth()+step);
+  if(viewMode==="fortnightly") currentDate.setDate(currentDate.getDate()+(step*14));
+  if(viewMode==="weekly") currentDate.setDate(currentDate.getDate()+(step*7));
+  renderCalendar();
+}
+function goToday(){
+  currentDate = new Date();
+  renderCalendar();
+}
+function getItemsForDate(date){
+  const iso = isoDate(date);
+  const year = date.getFullYear();
+  const bdays = birthdays
+    .filter(([name,dob]) => birthdayIsoThisYear(dob, year) === iso)
+    .map(([name]) => ({type:"birthday", title:`🎂 ${name}`}));
+  const hw = homework
+    .filter(h => h.date === iso)
+    .map(h => ({type:"homework", title:`📝 ${h.title}`}));
+  const ev = classEvents
+    .filter(e => e.date === iso)
+    .map(e => ({type:"event", title:`📸 ${e.title}`}));
+  return [...bdays, ...hw, ...ev];
+}
+function renderCalendar(){
+  const grid = document.getElementById("calendarGrid");
+  grid.className = "grid " + viewMode;
+  grid.innerHTML = "";
+  ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(day=>{
+    const div = document.createElement("div");
+    div.className = "day-name";
+    div.textContent = day;
+    grid.appendChild(div);
+  });
+  let start, daysToShow, title;
+  if(viewMode==="monthly"){
+    const first = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    start = startOfWeek(first);
+    const last = new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 0);
+    const end = startOfWeek(last);
+    end.setDate(end.getDate()+6);
+    daysToShow = Math.round((end-start)/(1000*60*60*24))+1;
+    title = currentDate.toLocaleDateString("en-SG",{month:"long",year:"numeric"});
+  }else if(viewMode==="fortnightly"){
+    start = startOfWeek(currentDate);
+    daysToShow = 14;
+    const end = new Date(start); end.setDate(end.getDate()+13);
+    title = `${formatDate(isoDate(start))} – ${formatDate(isoDate(end))}`;
+  }else{
+    start = startOfWeek(currentDate);
+    daysToShow = 7;
+    const end = new Date(start); end.setDate(end.getDate()+6);
+    title = `${formatDate(isoDate(start))} – ${formatDate(isoDate(end))}`;
+  }
+  document.getElementById("monthTitle").textContent = title;
+  const todayIso = isoDate(new Date());
+  for(let i=0;i<daysToShow;i++){
+    const d = new Date(start);
+    d.setDate(start.getDate()+i);
+    const div = document.createElement("div");
+    div.className = "day";
+    if(viewMode==="monthly" && d.getMonth() !== currentDate.getMonth()) div.classList.add("muted");
+    if(isoDate(d)===todayIso) div.classList.add("today");
+    div.innerHTML = `<div class="date-num">${d.getDate()}</div>`;
+    getItemsForDate(d).forEach(item=>{
+      div.innerHTML += `<span class="pill ${item.type}">${item.title}</span>`;
+    });
+    grid.appendChild(div);
+  }
+  renderUpcoming();
+}
+function addHomework(){
+  const title = document.getElementById("hwTitle").value.trim();
+  const date = document.getElementById("hwDate").value;
+  const type = document.getElementById("hwType").value;
+  const details = document.getElementById("hwDetails").value.trim();
+  if(!title || !date){ alert("Please enter title and due date."); return; }
+  homework.push({title,date,type,details});
+  homework.sort((a,b)=>a.date.localeCompare(b.date));
+  localStorage.setItem("homeworkItems26A03", JSON.stringify(homework));
+  document.getElementById("hwTitle").value="";
+  document.getElementById("hwDate").value="";
+  document.getElementById("hwDetails").value="";
+  renderHomework();
+  renderCalendar();
+}
+function deleteHomework(i){
+  homework.splice(i,1);
+  localStorage.setItem("homeworkItems26A03", JSON.stringify(homework));
+  renderHomework();
+  renderCalendar();
+}
+function renderHomework(){
+  const box = document.getElementById("homeworkList");
+  if(!homework.length){ box.innerHTML = "<p class='note'>No homework added yet.</p>"; return; }
+  box.innerHTML = homework.map((h,i)=>`
+    <div class="list-item">
+      <span class="badge">${h.type}</span>
+      <h3>${h.title}</h3>
+      <p><b>Due:</b> ${formatDate(h.date)}</p>
+      ${h.details ? `<p>${h.details}</p>` : ""}
+      <button class="danger" onclick="deleteHomework(${i})">Delete</button>
+    </div>
+  `).join("");
+}
+function renderUpcoming(){
+  const today = isoDate(new Date());
+  const year = new Date().getFullYear();
+  let items = [];
+  birthdays.forEach(([name,dob])=>{
+    let date = birthdayIsoThisYear(dob, year);
+    if(date < today) date = birthdayIsoThisYear(dob, year+1);
+    items.push({date, type:"Birthday", title:`${name}'s Birthday`});
+  });
+  homework.forEach(h=>items.push({date:h.date, type:h.type, title:h.title}));
+  classEvents.forEach(e=>items.push({date:e.date, type:"Class Event", title:e.title}));
+  items = items.filter(x=>x.date>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,8);
+  document.getElementById("upcomingList").innerHTML = items.map(x=>`
+    <div class="list-item">
+      <span class="badge">${x.type}</span>
+      <b>${x.title}</b><br>
+      <span class="note">${formatDate(x.date)}</span>
+    </div>
+  `).join("");
+}
+function fileToDataURL(file){
+  return new Promise(resolve=>{
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.readAsDataURL(file);
+  });
+}
+async function addClassEvent(){
+  const title = document.getElementById("eventTitle").value.trim();
+  const date = document.getElementById("eventDate").value;
+  const desc = document.getElementById("eventDesc").value.trim();
+  const files = [...document.getElementById("eventPhotos").files].slice(0,8);
+  if(!title || !date){ alert("Please enter event name and date."); return; }
+  const photos = [];
+  for(const file of files){ photos.push(await fileToDataURL(file)); }
+  classEvents.push({title,date,desc,photos,createdAt:Date.now()});
+  classEvents.sort((a,b)=>b.date.localeCompare(a.date));
+  localStorage.setItem("classEvents26A03", JSON.stringify(classEvents));
+  document.getElementById("eventTitle").value="";
+  document.getElementById("eventDate").value="";
+  document.getElementById("eventDesc").value="";
+  document.getElementById("eventPhotos").value="";
+  renderClassEvents();
+  renderCalendar();
+}
+function deleteClassEvent(i){
+  classEvents.splice(i,1);
+  localStorage.setItem("classEvents26A03", JSON.stringify(classEvents));
+  renderClassEvents();
+  renderCalendar();
+}
+function renderClassEvents(){
+  const q = (document.getElementById("eventSearch")?.value || "").toLowerCase();
+  const filtered = classEvents.filter(e=>e.title.toLowerCase().includes(q));
+  const box = document.getElementById("classEventList");
+  if(!filtered.length){ box.innerHTML = "<p class='note'>No class events added yet.</p>"; return; }
+  box.innerHTML = filtered.map((e)=>{
+    const realIndex = classEvents.indexOf(e);
+    return `
+    <div class="list-item">
+      <span class="badge">Class Event</span>
+      <h3>${e.title}</h3>
+      <p><b>Date:</b> ${formatDate(e.date)}</p>
+      ${e.desc ? `<p>${e.desc}</p>` : ""}
+      <div class="gallery">${(e.photos||[]).map(p=>`<img src="${p}" alt="Class photo">`).join("")}</div>
+      <button class="danger" onclick="deleteClassEvent(${realIndex})">Delete Event</button>
+    </div>`;
+  }).join("");
+}
+renderHomework();
+renderClassEvents();
+renderCalendar();
+</script>
+</body>
+</html>
