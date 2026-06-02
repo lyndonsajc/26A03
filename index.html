@@ -140,6 +140,7 @@ const firebaseConfig = {
   appId: "1:149308288995:web:d6a393ad9c3dacf893fad6"
 };
 const PHOTO_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbxErmDezeltUo9EE8iFGPeeqNbJacXGL80Jt862pLYauPEwdjPtbPTrzcpnQo7m5ZlMAQ/exec";
+const ADMIN_PIN = "2603";
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -258,6 +259,11 @@ async function addHomework(){
 window.addHomework = addHomework;
 
 async function deleteHomework(id){
+  const pin = prompt("Admin PIN");
+  if(pin !== ADMIN_PIN){
+    alert("Not authorised.");
+    return;
+  }
   if(confirm("Delete this homework item?")) await deleteDoc(doc(db, "homework26A03", id));
 }
 window.deleteHomework = deleteHomework;
@@ -341,6 +347,11 @@ async function addClassEvent(){
 window.addClassEvent = addClassEvent;
 
 async function deleteClassEvent(id){
+  const pin = prompt("Admin PIN");
+  if(pin !== ADMIN_PIN){
+    alert("Not authorised.");
+    return;
+  }
   if(confirm("Delete this event? This removes it from the app, but not from Google Drive.")) await deleteDoc(doc(db, "classEvents26A03", id));
 }
 window.deleteClassEvent = deleteClassEvent;
