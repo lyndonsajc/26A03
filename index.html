@@ -79,7 +79,7 @@ textarea{min-height:80px;margin-top:10px}
     <div class="grid" id="calendarGrid"></div>
   </div>
   <div class="card">
-    <h2>Upcoming</h2>
+    <h2>Announcements Board</h2>
     <div id="upcomingList"></div>
   </div>
 </section>
@@ -363,20 +363,21 @@ function renderAnnouncements(){
 
 function renderUpcoming(){
   const today = isoDate(new Date());
-  const year = new Date().getFullYear();
-  let items = [];
-  birthdays.forEach(([name,dob])=>{
-    let date = birthdayIsoThisYear(dob, year);
-    if(date < today) date = birthdayIsoThisYear(dob, year+1);
-    items.push({date, type:"Birthday", title:`${name}'s Birthday`});
-  });
-  homework.forEach(h=>items.push({date:h.date, type:h.type || "Homework", title:h.title}));
-  announcements.forEach(a=>items.push({date:a.date, type:"Announcement", title:a.title}));
-  classEvents.forEach(e=>items.push({date:e.date, type:"Class Event", title:e.title}));
-  items = items.filter(x=>x.date>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,8);
-  document.getElementById("upcomingList").innerHTML = items.map(x=>`
-    <div class="list-item"><span class="badge">${x.type}</span> <b>${x.title}</b><br><span class="note">${formatDate(x.date)}</span></div>
-  `).join("");
+
+  let items = announcements
+    .filter(a => a.date >= today)
+    .sort((a,b)=>a.date.localeCompare(b.date));
+
+  document.getElementById("upcomingList").innerHTML = items.length
+    ? items.map(a=>`
+        <div class="list-item">
+          <span class="badge">Announcement</span>
+          <b>${a.title}</b><br>
+          <span class="note">${formatDate(a.date)}</span>
+          ${a.details ? `<p>${a.details}</p>` : ""}
+        </div>
+      `).join("")
+    : "<p class='note'>No announcements.</p>";
 }
 
 function fileToBase64(file){
