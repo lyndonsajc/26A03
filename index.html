@@ -50,12 +50,13 @@ textarea{min-height:80px;margin-top:10px}
 <body>
 <header>
   <h1>26A03 Class Hub</h1>
-  <p>Shared Calendar • Homework • Class Events</p>
+  <p>Shared Calendar • Homework • Announcements • Class Events</p>
 </header>
 
 <nav>
   <button class="active" onclick="showTab('calendar', this)">📅 Calendar</button>
   <button onclick="showTab('homework', this)">📝 Homework</button>
+  <button onclick="showTab('announcements', this)">📢 Announcements</button>
   <button onclick="showTab('events', this)">📸 Class Events</button>
 </nav>
 
@@ -100,6 +101,25 @@ textarea{min-height:80px;margin-top:10px}
   <div class="card">
     <h2>Homework List</h2>
     <div id="homeworkList"></div>
+  </div>
+</section>
+
+
+<section id="announcements" class="tabs">
+  <div class="card">
+    <h2>📢 Announcements</h2>
+    <div class="row">
+      <input id="annTitle" placeholder="Announcement title e.g. Bring calculator" />
+      <input id="annDate" type="date" />
+    </div>
+    <textarea id="annDetails" placeholder="Announcement details"></textarea>
+    <button class="primary" onclick="addAnnouncement()">Add Announcement</button>
+    <div id="annStatus" class="status"></div>
+  </div>
+
+  <div class="card">
+    <h2>Announcement Board</h2>
+    <div id="announcementList"></div>
   </div>
 </section>
 
@@ -156,6 +176,7 @@ const birthdays = [
 ];
 
 let homework = [];
+let announcements = [];
 let classEvents = [];
 let currentDate = new Date();
 let viewMode = "monthly";
@@ -198,8 +219,9 @@ function getItemsForDate(date){
   const year = date.getFullYear();
   const bdays = birthdays.filter(([name,dob]) => birthdayIsoThisYear(dob, year) === iso).map(([name]) => ({type:"birthday", title:`🎂 ${name}`}));
   const hw = homework.filter(h => h.date === iso).map(h => ({type:"homework", title:`📝 ${h.title}`}));
+  const ann = announcements.filter(a => a.date === iso).map(a => ({type:"event", title:`📢 ${a.title}`}));
   const ev = classEvents.filter(e => e.date === iso).map(e => ({type:"event", title:`📸 ${e.title}`}));
-  return [...bdays, ...hw, ...ev];
+  return [...bdays, ...hw, ...ann, ...ev];
 }
 
 function renderCalendar(){
@@ -283,6 +305,62 @@ function renderHomework(){
   `).join("");
 }
 
+async function addAnnouncement(){
+  const pin = prompt("Admin PIN");
+  if(pin !== ADMIN_PIN){
+    alert("Not authorised.");
+    return;
+  }
+
+  const title = document.getElementById("annTitle").value.trim();
+  const date = document.getElementById("annDate").value;
+  const details = document.getElementById("annDetails").value.trim();
+
+  if(!title || !date){
+    alert("Please enter announcement title and date.");
+    return;
+  }
+
+  document.getElementById("annStatus").textContent = "Saving...";
+  await addDoc(collection(db, "announcements26A03"), { title, date, details, createdAt: serverTimestamp() });
+
+  document.getElementById("annTitle").value = "";
+  document.getElementById("annDate").value = "";
+  document.getElementById("annDetails").value = "";
+  document.getElementById("annStatus").textContent = "Saved.";
+  setTimeout(()=>document.getElementById("annStatus").textContent="", 1500);
+}
+window.addAnnouncement = addAnnouncement;
+
+async function deleteAnnouncement(id){
+  const pin = prompt("Admin PIN");
+  if(pin !== ADMIN_PIN){
+    alert("Not authorised.");
+    return;
+  }
+  if(confirm("Delete this announcement?")) await deleteDoc(doc(db, "announcements26A03", id));
+}
+window.deleteAnnouncement = deleteAnnouncement;
+
+function renderAnnouncements(){
+  const box = document.getElementById("announcementList");
+  if(!announcements.length){
+    box.innerHTML = "<p class='note'>No announcements yet.</p>";
+    return;
+  }
+
+  const sorted = [...announcements].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  box.innerHTML = sorted.map(a=>`
+    <div class="list-item">
+      <span class="badge">Announcement</span>
+      <h3>${a.title || ""}</h3>
+      <p><b>Date:</b> ${formatDate(a.date)}</p>
+      ${a.details ? `<p>${a.details}</p>` : ""}
+      <button class="danger" onclick="deleteAnnouncement('${a.id}')">Delete</button>
+    </div>
+  `).join("");
+}
+
 function renderUpcoming(){
   const today = isoDate(new Date());
   const year = new Date().getFullYear();
@@ -293,6 +371,7 @@ function renderUpcoming(){
     items.push({date, type:"Birthday", title:`${name}'s Birthday`});
   });
   homework.forEach(h=>items.push({date:h.date, type:h.type || "Homework", title:h.title}));
+  announcements.forEach(a=>items.push({date:a.date, type:"Announcement", title:a.title}));
   classEvents.forEach(e=>items.push({date:e.date, type:"Class Event", title:e.title}));
   items = items.filter(x=>x.date>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,8);
   document.getElementById("upcomingList").innerHTML = items.map(x=>`
@@ -379,6 +458,11 @@ onSnapshot(query(collection(db, "homework26A03")), snapshot => {
   renderHomework(); renderCalendar();
 });
 
+onSnapshot(query(collection(db, "announcements26A03")), snapshot => {
+  announcements = snapshot.docs.map(d => ({ id:d.id, ...d.data() }));
+  renderAnnouncements(); renderCalendar();
+});
+
 onSnapshot(query(collection(db, "classEvents26A03")), snapshot => {
   classEvents = snapshot.docs.map(d => ({ id:d.id, ...d.data() }));
   renderClassEvents(); renderCalendar();
@@ -386,6 +470,7 @@ onSnapshot(query(collection(db, "classEvents26A03")), snapshot => {
 
 renderCalendar();
 renderHomework();
+renderAnnouncements();
 renderClassEvents();
 </script>
 </body>
