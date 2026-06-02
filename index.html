@@ -35,22 +35,25 @@ textarea{min-height:80px;margin-top:10px}
 .calendar-controls{display:flex;gap:8px;flex-wrap:wrap}
 .calendar-controls button{border:1px solid var(--line);background:white;padding:8px 12px;border-radius:999px;cursor:pointer}
 .calendar-controls button.active{background:var(--brand);color:white}
-.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
-.grid.weekly .day{min-height:520px} .grid.fortnightly .day{min-height:250px} .grid.monthly .day{min-height:112px}
+.calendar-scroll{width:100%;overflow-x:auto;overflow-y:hidden;padding-bottom:8px;-webkit-overflow-scrolling:touch}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(140px,1fr));gap:8px;min-width:980px}
+.grid.weekly .day{min-height:520px} .grid.monthly .day{min-height:112px}
 .day-name{text-align:center;font-weight:700;color:var(--muted);padding:8px}
 .day{background:#fafafa;border:1px solid var(--line);border-radius:14px;padding:8px;overflow:hidden}
 .day.today{border:2px solid var(--brand)} .day.muted{opacity:.35}
 .date-num{font-weight:700;margin-bottom:5px}
-.pill{display:block;font-size:12px;padding:5px 6px;border-radius:8px;margin:4px 0;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25;word-break:break-word}
+.pill{display:block;font-size:12px;padding:5px 6px;border-radius:8px;margin:4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25;max-width:100%}
 .pill.birthday{background:var(--birthday)} .pill.homework{background:var(--homework)} .pill.event{background:var(--event)}
 .list-item{border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0;background:#fff}
 .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700;background:#eef2ff;color:#3730a3}
 .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:10px}
 .gallery img{width:100%;height:110px;object-fit:cover;border-radius:12px;border:1px solid var(--line)}
 .note{color:var(--muted);font-size:14px} .status{font-weight:700;color:#2563eb;margin-top:8px}
+.schedule-item{display:grid;grid-template-columns:110px 1fr;gap:12px;align-items:start}
+.schedule-date{font-weight:700;color:var(--brand)}
 @media(max-width:700px){
-  header h1{font-size:22px} .grid{gap:5px} .day{min-height:90px;padding:6px}
-  .grid.weekly .day{min-height:360px} .grid.fortnightly .day{min-height:175px} .pill{font-size:11px}
+  header h1{font-size:22px} .grid{gap:5px;grid-template-columns:repeat(7,120px);min-width:840px} .day{min-height:90px;padding:6px}
+  .grid.weekly .day{min-height:360px} .pill{font-size:11px}.schedule-item{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -80,10 +83,11 @@ textarea{min-height:80px;margin-top:10px}
     </div>
     <div class="calendar-controls" style="margin-bottom:14px">
       <button id="monthlyBtn" class="active" onclick="setView('monthly')">Monthly</button>
-      <button id="fortnightlyBtn" onclick="setView('fortnightly')">Fortnightly</button>
       <button id="weeklyBtn" onclick="setView('weekly')">Weekly</button>
+      <button id="scheduleBtn" onclick="setView('schedule')">Upcoming / Schedule</button>
     </div>
-    <div class="grid" id="calendarGrid"></div>
+    <div class="calendar-scroll"><div class="grid" id="calendarGrid"></div></div>
+    <div id="scheduleView" style="display:none"></div>
   </div>
   <div class="card">
     <h2>Announcements Board</h2>
@@ -205,16 +209,15 @@ function startOfWeek(date){ const d = new Date(date); d.setDate(d.getDate() - d.
 function setView(mode){
   viewMode = mode;
   document.getElementById("monthlyBtn").classList.toggle("active", mode==="monthly");
-  document.getElementById("fortnightlyBtn").classList.toggle("active", mode==="fortnightly");
   document.getElementById("weeklyBtn").classList.toggle("active", mode==="weekly");
+  document.getElementById("scheduleBtn").classList.toggle("active", mode==="schedule");
   renderCalendar();
 }
 window.setView = setView;
 
 function moveDate(step){
   if(viewMode==="monthly") currentDate.setMonth(currentDate.getMonth()+step);
-  if(viewMode==="fortnightly") currentDate.setDate(currentDate.getDate()+(step*14));
-  if(viewMode==="weekly") currentDate.setDate(currentDate.getDate()+(step*7));
+  if(viewMode==="weekly" || viewMode==="schedule") currentDate.setDate(currentDate.getDate()+(step*7));
   renderCalendar();
 }
 window.moveDate = moveDate;
@@ -231,8 +234,62 @@ function getItemsForDate(date){
   return [...bdays, ...hw, ...ann, ...ev];
 }
 
-function renderCalendar(){
+function getScheduleItems(){
+  const today = isoDate(new Date());
+  const year = new Date().getFullYear();
+  let items = [];
+
+  birthdays.forEach(([name,dob])=>{
+    let date = birthdayIsoThisYear(dob, year);
+    if(date < today) date = birthdayIsoThisYear(dob, year+1);
+    items.push({date, type:"Birthday", title:`🎂 ${name}`});
+  });
+
+  homework.forEach(h=>items.push({date:h.date, type:h.type || "Homework", title:`📝 ${h.title}`, details:h.details || ""}));
+  announcements.forEach(a=>items.push({date:a.date, type:"Announcement", title:`📢 ${a.title}`, details:a.details || ""}));
+  classEvents.forEach(e=>items.push({date:e.date, type:"Class Event", title:`📸 ${e.title}`, details:e.desc || ""}));
+
+  return items
+    .filter(x=>x.date >= today)
+    .sort((a,b)=>a.date.localeCompare(b.date));
+}
+
+function renderScheduleView(){
   const grid = document.getElementById("calendarGrid");
+  const schedule = document.getElementById("scheduleView");
+  grid.style.display = "none";
+  schedule.style.display = "block";
+  document.querySelector(".calendar-scroll").style.overflowX = "visible";
+
+  const items = getScheduleItems().slice(0,30);
+  document.getElementById("monthTitle").textContent = "Upcoming / Schedule";
+
+  schedule.innerHTML = items.length ? items.map(x=>`
+    <div class="list-item schedule-item">
+      <div class="schedule-date">${formatDate(x.date)}</div>
+      <div>
+        <span class="badge">${x.type}</span>
+        <h3>${x.title}</h3>
+        ${x.details ? `<p>${x.details}</p>` : ""}
+      </div>
+    </div>
+  `).join("") : "<p class='note'>No upcoming items.</p>";
+
+  renderUpcoming();
+}
+
+function renderCalendar(){
+  if(viewMode === "schedule"){
+    renderScheduleView();
+    return;
+  }
+
+  const grid = document.getElementById("calendarGrid");
+  const schedule = document.getElementById("scheduleView");
+  grid.style.display = "grid";
+  schedule.style.display = "none";
+  document.querySelector(".calendar-scroll").style.overflowX = "auto";
+
   grid.className = "grid " + viewMode;
   grid.innerHTML = "";
   ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(day=>{
@@ -241,6 +298,7 @@ function renderCalendar(){
     div.textContent = day;
     grid.appendChild(div);
   });
+
   let start, daysToShow, title;
   if(viewMode==="monthly"){
     const first = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -249,17 +307,15 @@ function renderCalendar(){
     const end = startOfWeek(last); end.setDate(end.getDate()+6);
     daysToShow = Math.round((end-start)/(1000*60*60*24))+1;
     title = currentDate.toLocaleDateString("en-SG",{month:"long",year:"numeric"});
-  } else if(viewMode==="fortnightly"){
-    start = startOfWeek(currentDate); daysToShow = 14;
-    const end = new Date(start); end.setDate(end.getDate()+13);
-    title = `${formatDate(isoDate(start))} – ${formatDate(isoDate(end))}`;
   } else {
     start = startOfWeek(currentDate); daysToShow = 7;
     const end = new Date(start); end.setDate(end.getDate()+6);
     title = `${formatDate(isoDate(start))} – ${formatDate(isoDate(end))}`;
   }
+
   document.getElementById("monthTitle").textContent = title;
   const todayIso = isoDate(new Date());
+
   for(let i=0;i<daysToShow;i++){
     const d = new Date(start); d.setDate(start.getDate()+i);
     const div = document.createElement("div");
@@ -267,9 +323,10 @@ function renderCalendar(){
     if(viewMode==="monthly" && d.getMonth() !== currentDate.getMonth()) div.classList.add("muted");
     if(isoDate(d)===todayIso) div.classList.add("today");
     div.innerHTML = `<div class="date-num">${d.getDate()}</div>`;
-    getItemsForDate(d).forEach(item=> div.innerHTML += `<span class="pill ${item.type}">${item.title}</span>`);
+    getItemsForDate(d).forEach(item=> div.innerHTML += `<span class="pill ${item.type}" title="${item.title}">${item.title}</span>`);
     grid.appendChild(div);
   }
+
   renderUpcoming();
 }
 
