@@ -231,19 +231,42 @@ const ADMIN_PIN = "0804";
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const birthdays = [
-  ["Annthea","06/12/2009"],["Brandon","29/05/2009"],["Chanelle","03/03/2009"],["Chloe","16/03/2009"],
-  ["Clarissa","30/09/2009"],["Wen Jie","06/10/2009"],["Kai","28/08/2008"],["Lucien","28/10/2009"],
-  ["Ernest","30/07/2009"],["Jessandra","04/06/2009"],["Lily","08/10/2008"],["Elva","07/03/2009"],
-  ["Verlynn","04/08/2009"],["Zhi Qi","26/04/2009"],["Jordan","06/02/2009"],["Meredith","11/12/2009"],
-  ["Miller","28/02/2009"],["Nicole","26/02/2009"],["Javien","11/11/2009"],["Rayirth","17/02/2009"],
-  ["Benjamin","01/03/2009"],["Xuan You","26/02/2009"],["Emma","07/01/2009"],["Jensen","01/01/2009"],
-  ["Natalie","01/06/2009"],["Tess","12/02/2009"]
+const classStudents = [
+  {name:"Annthea", dob:"06/12/2009"},
+  {name:"Brandon", dob:"29/05/2009"},
+  {name:"Chanelle", dob:"03/03/2009"},
+  {name:"Chloe", dob:"16/03/2009"},
+  {name:"Clarissa", dob:"30/09/2009"},
+  {name:"Elsbeth", dob:"03/03/2009"},
+  {name:"Wen Jie", dob:"06/10/2009"},
+  {name:"Kai", dob:"28/08/2008"},
+  {name:"Lucien", dob:"28/10/2009"},
+  {name:"Ernest", dob:"30/07/2009"},
+  {name:"Jessandra", dob:"04/06/2009"},
+  {name:"Lily", dob:"08/10/2008"},
+  {name:"Elva", dob:"07/03/2009"},
+  {name:"Verlynn", dob:"04/08/2009"},
+  {name:"Zhi Qi", dob:"26/04/2009"},
+  {name:"Jordan", dob:"06/02/2009"},
+  {name:"Meredith", dob:"11/12/2009"},
+  {name:"Miller", dob:"28/02/2009"},
+  {name:"Nicole", dob:"26/02/2009"},
+  {name:"Javien", dob:"11/11/2009"},
+  {name:"Rayirth", dob:"17/02/2009"},
+  {name:"Benjamin", dob:"01/03/2009"},
+  {name:"Xuan You", dob:"26/02/2009"},
+  {name:"Lutfur", dob:"12/05/2008"},
+  {name:"Emma", dob:"07/01/2009"},
+  {name:"Jensen", dob:"01/01/2009"},
+  {name:"Natalie", dob:"01/06/2009"},
+  {name:"Tess", dob:"12/02/2009"}
 ];
 
+const birthdays = classStudents.map(student => [student.name, student.dob]);
+
 function populateStudentDropdowns(){
-  const options = birthdays
-    .map(([name]) => `<option value="${name}">${name}</option>`)
+  const options = classStudents
+    .map(student => `<option value="${student.name}">${student.name}</option>`)
     .join("");
 
   const rewardStudent = document.getElementById("rewardStudent");
