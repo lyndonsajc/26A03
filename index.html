@@ -60,7 +60,7 @@ textarea{min-height:80px;margin-top:10px}
 <body>
 <header>
   <h1>26A03 Class Hub</h1>
-  <p>Shared Calendar • Homework • Announcements • Class Events</p>
+  <p>Shared Calendar • Homework • Announcements • Class Events • Rewards • Transgressions</p>
 </header>
 
 <nav>
@@ -68,6 +68,8 @@ textarea{min-height:80px;margin-top:10px}
   <button onclick="showTab('homework', this)">📝 Homework</button>
   <button onclick="showTab('announcements', this)">📢 Announcements</button>
   <button onclick="showTab('events', this)">📸 Class Events</button>
+  <button onclick="showTab('rewards', this)">🏆 Rewards</button>
+  <button onclick="showTab('transgressions', this)">⚠️ Transgressions</button>
 </nav>
 
 <main>
@@ -153,6 +155,59 @@ textarea{min-height:80px;margin-top:10px}
     <div id="classEventList"></div>
   </div>
 </section>
+
+<section id="rewards" class="tabs">
+  <div class="card">
+    <h2>🏆 Add Reward</h2>
+    <div class="row">
+      <select id="rewardStudent">
+        <option value="">Select Student</option>
+      </select>
+      <input id="rewardPoints" type="number" placeholder="Points e.g. 1" />
+    </div>
+    <textarea id="rewardReason" placeholder="Reason"></textarea>
+    <button class="primary" onclick="addReward()">Add Reward</button>
+    <div id="rewardStatus" class="status"></div>
+  </div>
+
+  <div class="card">
+    <h2>🏆 Leaderboard</h2>
+    <div id="leaderboard"></div>
+  </div>
+
+  <div class="card">
+    <h2>Recent Rewards</h2>
+    <div id="rewardList"></div>
+  </div>
+</section>
+
+<section id="transgressions" class="tabs">
+  <div class="card">
+    <h2>⚠️ Add Transgression</h2>
+    <div class="row">
+      <select id="transStudent">
+        <option value="">Select Student</option>
+      </select>
+      <select id="transCategory">
+        <option>Homework</option>
+        <option>Attendance</option>
+        <option>Behaviour</option>
+        <option>Late</option>
+        <option>Uniform</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <textarea id="transReason" placeholder="Reason"></textarea>
+    <button class="primary" onclick="addTransgression()">Add Transgression</button>
+    <div id="transStatus" class="status"></div>
+  </div>
+
+  <div class="card">
+    <h2>Recent Transgressions</h2>
+    <div id="transgressionList"></div>
+  </div>
+</section>
+
 </main>
 
 <script type="module">
@@ -186,9 +241,23 @@ const birthdays = [
   ["Natalie","01/06/2009"],["Tess","12/02/2009"]
 ];
 
+function populateStudentDropdowns(){
+  const options = birthdays
+    .map(([name]) => `<option value="${name}">${name}</option>`)
+    .join("");
+
+  const rewardStudent = document.getElementById("rewardStudent");
+  const transStudent = document.getElementById("transStudent");
+
+  if(rewardStudent) rewardStudent.innerHTML = `<option value="">Select Student</option>${options}`;
+  if(transStudent) transStudent.innerHTML = `<option value="">Select Student</option>${options}`;
+}
+
 let homework = [];
 let announcements = [];
 let classEvents = [];
+let rewards = [];
+let transgressions = [];
 let currentDate = new Date();
 let viewMode = "monthly";
 
@@ -518,6 +587,159 @@ function renderClassEvents(){
 }
 window.renderClassEvents = renderClassEvents;
 
+
+async function addReward(){
+  const pin = prompt("Admin PIN");
+  if(pin !== ADMIN_PIN){
+    alert("Not authorised.");
+    return;
+  }
+
+  const student = document.getElementById("rewardStudent").value;
+  const points = Number(document.getElementById("rewardPoints").value);
+  const reason = document.getElementById("rewardReason").value.trim();
+
+  if(!student || !points || !reason){
+    alert("Please select student, enter points and reason.");
+    return;
+  }
+
+  document.getElementById("rewardStatus").textContent = "Saving...";
+  await addDoc(collection(db, "rewards26A03"), {
+    student,
+    points,
+    reason,
+    awardedBy: "Mr Chua",
+    date: new Date().toISOString().split("T")[0],
+    createdAt: serverTimestamp()
+  });
+
+  document.getElementById("rewardStudent").value = "";
+  document.getElementById("rewardPoints").value = "";
+  document.getElementById("rewardReason").value = "";
+  document.getElementById("rewardStatus").textContent = "Saved.";
+  setTimeout(()=>document.getElementById("rewardStatus").textContent="", 1500);
+}
+window.addReward = addReward;
+
+async function deleteReward(id){
+  const pin = prompt("Admin PIN");
+  if(pin !== ADMIN_PIN){
+    alert("Not authorised.");
+    return;
+  }
+
+  if(confirm("Delete this reward?")){
+    await deleteDoc(doc(db, "rewards26A03", id));
+  }
+}
+window.deleteReward = deleteReward;
+
+function renderRewards(){
+  const leaderboardBox = document.getElementById("leaderboard");
+  const rewardListBox = document.getElementById("rewardList");
+
+  if(!leaderboardBox || !rewardListBox) return;
+
+  const totals = {};
+  rewards.forEach(r=>{
+    if(!r.student) return;
+    totals[r.student] = (totals[r.student] || 0) + Number(r.points || 0);
+  });
+
+  const ranking = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+
+  leaderboardBox.innerHTML = ranking.length
+    ? ranking.map(([student, points], index)=>`
+      <div class="list-item">
+        <b>${index + 1}. ${student}</b><br>
+        ${points} pts
+      </div>
+    `).join("")
+    : "<p class='note'>No rewards yet.</p>";
+
+  const sorted = [...rewards].sort((a,b)=>(b.date || "").localeCompare(a.date || ""));
+
+  rewardListBox.innerHTML = sorted.length
+    ? sorted.map(r=>`
+      <div class="list-item">
+        <span class="badge">Reward</span>
+        <h3>${r.student || ""}</h3>
+        <p><b>Points:</b> +${Number(r.points || 0)}</p>
+        <p><b>Date:</b> ${formatDate(r.date)}</p>
+        ${r.reason ? `<p>${r.reason}</p>` : ""}
+        <button class="danger" onclick="deleteReward('${r.id}')">Delete</button>
+      </div>
+    `).join("")
+    : "<p class='note'>No rewards yet.</p>";
+}
+
+async function addTransgression(){
+  const pin = prompt("Admin PIN");
+  if(pin !== ADMIN_PIN){
+    alert("Not authorised.");
+    return;
+  }
+
+  const student = document.getElementById("transStudent").value;
+  const category = document.getElementById("transCategory").value;
+  const reason = document.getElementById("transReason").value.trim();
+
+  if(!student || !category || !reason){
+    alert("Please select student, category and reason.");
+    return;
+  }
+
+  document.getElementById("transStatus").textContent = "Saving...";
+  await addDoc(collection(db, "transgressions26A03"), {
+    student,
+    category,
+    reason,
+    issuedBy: "Mr Chua",
+    date: new Date().toISOString().split("T")[0],
+    createdAt: serverTimestamp()
+  });
+
+  document.getElementById("transStudent").value = "";
+  document.getElementById("transCategory").value = "Homework";
+  document.getElementById("transReason").value = "";
+  document.getElementById("transStatus").textContent = "Saved.";
+  setTimeout(()=>document.getElementById("transStatus").textContent="", 1500);
+}
+window.addTransgression = addTransgression;
+
+async function deleteTransgression(id){
+  const pin = prompt("Admin PIN");
+  if(pin !== ADMIN_PIN){
+    alert("Not authorised.");
+    return;
+  }
+
+  if(confirm("Delete this transgression?")){
+    await deleteDoc(doc(db, "transgressions26A03", id));
+  }
+}
+window.deleteTransgression = deleteTransgression;
+
+function renderTransgressions(){
+  const box = document.getElementById("transgressionList");
+  if(!box) return;
+
+  const sorted = [...transgressions].sort((a,b)=>(b.date || "").localeCompare(a.date || ""));
+
+  box.innerHTML = sorted.length
+    ? sorted.map(t=>`
+      <div class="list-item">
+        <span class="badge">${t.category || "Transgression"}</span>
+        <h3>${t.student || ""}</h3>
+        <p><b>Date:</b> ${formatDate(t.date)}</p>
+        ${t.reason ? `<p>${t.reason}</p>` : ""}
+        <button class="danger" onclick="deleteTransgression('${t.id}')">Delete</button>
+      </div>
+    `).join("")
+    : "<p class='note'>No transgressions yet.</p>";
+}
+
 onSnapshot(query(collection(db, "homework26A03")), snapshot => {
   homework = snapshot.docs.map(d => ({ id:d.id, ...d.data() }));
   renderHomework(); renderCalendar();
@@ -533,10 +755,23 @@ onSnapshot(query(collection(db, "classEvents26A03")), snapshot => {
   renderClassEvents(); renderCalendar();
 });
 
+onSnapshot(query(collection(db, "rewards26A03")), snapshot => {
+  rewards = snapshot.docs.map(d => ({ id:d.id, ...d.data() }));
+  renderRewards();
+});
+
+onSnapshot(query(collection(db, "transgressions26A03")), snapshot => {
+  transgressions = snapshot.docs.map(d => ({ id:d.id, ...d.data() }));
+  renderTransgressions();
+});
+
+populateStudentDropdowns();
 renderCalendar();
 renderHomework();
 renderAnnouncements();
 renderClassEvents();
+renderRewards();
+renderTransgressions();
 </script>
 
 <script>
